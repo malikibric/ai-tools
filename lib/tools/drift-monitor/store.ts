@@ -1,4 +1,4 @@
-import type { DriftAssessment } from "@/lib/schemas/drift-assessment";
+import type { DriftAssessment } from "./schema";
 
 export type Workflow = {
   id: string;

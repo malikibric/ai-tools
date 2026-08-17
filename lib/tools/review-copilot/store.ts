@@ -1,4 +1,4 @@
-import type { ReviewBrief } from "@/lib/schemas/review-brief";
+import type { ReviewBrief } from "./schema";
 
 export type SubmissionStatus = "pending" | "approved" | "approved_with_changes" | "rejected";
 

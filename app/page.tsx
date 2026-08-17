@@ -28,10 +28,10 @@ export default function HomePage() {
   return (
     <div className="mx-auto min-h-screen max-w-5xl px-6 py-16">
       <p className="font-mono text-xs uppercase tracking-wide text-amber">TAI Labs Prototype Suite</p>
-      <h1 className="mt-3 font-display text-4xl font-semibold text-text">Three tools for the enablement loop.</h1>
+      <h1 className="mt-3 font-display text-4xl font-semibold text-text">Four tools for the enablement loop.</h1>
       <p className="mt-3 max-w-2xl text-text-muted">
-        Diagnose, teach, build, approve, measure — these three prototypes plug the gaps between shipping a workflow
-        and knowing it still works.
+        Diagnose, teach, build, approve, measure — these four prototypes close the loop: prove the work changed,
+        catch drift, make approvals real, and start from what&apos;s already happening.
       </p>
       <div className="mt-10 grid gap-5 sm:grid-cols-2">
         {TOOLS.map((tool) => (

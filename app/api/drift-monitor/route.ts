@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callStructured, classifyError } from "@/lib/ai";
-import { DriftAssessmentSchema } from "@/lib/schemas/drift-assessment";
-import { getWorkflowById, updateWorkflowAssessment, type Workflow } from "@/lib/store/workflows";
+import { badRequest, notFound, readJsonBody } from "@/lib/http";
+import { DriftAssessmentSchema } from "@/lib/tools/drift-monitor/schema";
+import { getWorkflowById, updateWorkflowAssessment, type Workflow } from "@/lib/tools/drift-monitor/store";
+
+const RequestSchema = z.object({ workflowId: z.string().min(1) });
 
 function buildPrompt(workflow: Workflow) {
   return `You are assessing whether an internal AI-assisted workflow has drifted since it was approved.
@@ -21,21 +25,11 @@ Assess:
 }
 
 export async function POST(request: Request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
-      { status: 400 }
-    );
-  }
-  const workflowId = body.workflowId as string;
-  const workflow = getWorkflowById(workflowId);
+  const body = await readJsonBody(request, RequestSchema);
+  if (!body) return badRequest("workflowId is required.");
 
-  if (!workflow) {
-    return NextResponse.json({ error: { kind: "not_found", message: "Workflow not found." } }, { status: 404 });
-  }
+  const workflow = getWorkflowById(body.workflowId);
+  if (!workflow) return notFound("Workflow not found.");
 
   try {
     const assessment = await callStructured(DriftAssessmentSchema, buildPrompt(workflow));

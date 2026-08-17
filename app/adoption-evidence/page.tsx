@@ -1,11 +1,17 @@
+import type { Metadata } from "next";
 import { PageShell } from "@/lib/ui/PageShell";
 import {
   getAdoptionWorkflows,
   summarizeAdoption,
-} from "@/lib/store/adoption-workflows";
+} from "@/lib/tools/adoption-evidence/store";
 import { AdoptionEvidenceClient } from "./AdoptionEvidenceClient";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Adoption Evidence Engine — TAI Suite",
+  description: "Measures whether approved workflows actually changed the work, via telemetry heartbeats.",
+};
 
 export default function AdoptionEvidencePage() {
   const workflows = getAdoptionWorkflows();

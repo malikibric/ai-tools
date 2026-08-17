@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
-import { Badge } from "@/lib/ui/Badge";
-import type { Submission, SubmissionStatus } from "@/lib/store/submissions";
-import type { ReviewBrief } from "@/lib/schemas/review-brief";
+import { Badge } from "./Badge";
+import type { Submission, SubmissionStatus } from "@/lib/tools/review-copilot/store";
+import type { ReviewBrief } from "@/lib/tools/review-copilot/schema";
 
 const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending: "Pending",

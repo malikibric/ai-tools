@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
-import { RiskPill } from "@/lib/ui/RiskPill";
-import type { Workflow } from "@/lib/store/workflows";
+import { RiskPill } from "./RiskPill";
+import type { Workflow } from "@/lib/tools/drift-monitor/store";
 
 const COLUMNS: { key: "unchecked" | "healthy" | "at_risk" | "broken"; label: string }[] = [
   { key: "unchecked", label: "Not Yet Checked" },

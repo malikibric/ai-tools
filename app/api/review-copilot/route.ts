@@ -1,13 +1,30 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callStructured, classifyError } from "@/lib/ai";
-import { ReviewBriefSchema } from "@/lib/schemas/review-brief";
+import { badRequest, notFound, readJsonBody } from "@/lib/http";
+import { ReviewBriefSchema } from "@/lib/tools/review-copilot/schema";
 import {
   addSubmission,
   getSubmissionById,
   setSubmissionBrief,
   setSubmissionStatus,
   type SubmissionStatus,
-} from "@/lib/store/submissions";
+} from "@/lib/tools/review-copilot/store";
+
+const ExistingSchema = z.object({ id: z.string().min(1) });
+
+const CreateSchema = z.object({
+  employeeName: z.string().min(1),
+  whatItDoes: z.string().min(1),
+  toolOrPromptUsed: z.string().min(1),
+  claimedTimeSavedPerWeek: z.string().min(1),
+  dataTouched: z.string().min(1),
+});
+
+const StatusSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(["pending", "approved", "approved_with_changes", "rejected"]),
+});
 
 function buildPrompt(input: {
   whatItDoes: string;
@@ -30,35 +47,18 @@ Produce:
 }
 
 export async function POST(request: Request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
-      { status: 400 }
-    );
-  }
+  const body = await readJsonBody(request, z.union([ExistingSchema, CreateSchema]));
+  if (!body) return badRequest("Provide a submission id, or the full submission details.");
 
   let submission;
-
-  if (body?.id) {
+  if ("id" in body) {
     // Generate a brief for an existing submission (e.g. a seeded one).
-    const existing = getSubmissionById(body.id as string);
-    if (!existing) {
-      return NextResponse.json({ error: { kind: "not_found", message: "Submission not found." } }, { status: 404 });
-    }
+    const existing = getSubmissionById(body.id);
+    if (!existing) return notFound("Submission not found.");
     submission = existing;
   } else {
     // Create a new submission, then generate its brief.
-    const { employeeName, whatItDoes, toolOrPromptUsed, claimedTimeSavedPerWeek, dataTouched } = body;
-    submission = addSubmission({
-      employeeName,
-      whatItDoes,
-      toolOrPromptUsed,
-      claimedTimeSavedPerWeek,
-      dataTouched,
-    });
+    submission = addSubmission(body);
   }
 
   try {
@@ -80,22 +80,12 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
-      { status: 400 }
-    );
-  }
-  const { id, status } = body as { id: string; status: SubmissionStatus };
+  const body = await readJsonBody(request, StatusSchema);
+  if (!body) return badRequest("id and a valid status are required.");
 
-  const existing = getSubmissionById(id);
-  if (!existing) {
-    return NextResponse.json({ error: { kind: "not_found", message: "Submission not found." } }, { status: 404 });
-  }
+  const existing = getSubmissionById(body.id);
+  if (!existing) return notFound("Submission not found.");
 
-  const updated = setSubmissionStatus(id, status);
+  const updated = setSubmissionStatus(body.id, body.status as SubmissionStatus);
   return NextResponse.json({ submission: updated });
 }

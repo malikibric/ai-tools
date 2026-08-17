@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callStructured, classifyError } from "@/lib/ai";
-import { SurveyAnalysisSchema } from "@/lib/schemas/survey-analysis";
-import { addSurveyResponse, setSurveyResponseAnalysis } from "@/lib/store/survey-responses";
+import { badRequest, readJsonBody } from "@/lib/http";
+import { SurveyAnalysisSchema } from "@/lib/tools/shadow-scanner/schema";
+import { addSurveyResponse, setSurveyResponseAnalysis } from "@/lib/tools/shadow-scanner/store";
+
+const AnswersSchema = z.object({
+  toolsUsed: z.string().min(1),
+  whatFor: z.string().min(1),
+  howOften: z.string().min(1),
+});
 
 function buildPrompt(answers: { toolsUsed: string; whatFor: string; howOften: string }) {
   return `An employee answered a short survey about informal AI tool usage at work.
@@ -18,25 +26,13 @@ Extract:
 }
 
 export async function POST(request: Request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
-      { status: 400 }
-    );
-  }
-  const answers = {
-    toolsUsed: body.toolsUsed as string,
-    whatFor: body.whatFor as string,
-    howOften: body.howOften as string,
-  };
+  const body = await readJsonBody(request, AnswersSchema);
+  if (!body) return badRequest("All three survey answers are required.");
 
-  const surveyResponse = addSurveyResponse(answers);
+  const surveyResponse = addSurveyResponse(body);
 
   try {
-    const analysis = await callStructured(SurveyAnalysisSchema, buildPrompt(answers));
+    const analysis = await callStructured(SurveyAnalysisSchema, buildPrompt(body));
     const updated = setSurveyResponseAnalysis(surveyResponse.id, analysis);
     return NextResponse.json({ response: updated });
   } catch (error) {

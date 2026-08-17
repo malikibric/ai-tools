@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { PageShell } from "@/lib/ui/PageShell";
 import { Card } from "@/lib/ui/Card";
-import { getSurveyResponses } from "@/lib/store/survey-responses";
+import { getSurveyResponses, type SurveyResponse } from "@/lib/tools/shadow-scanner/store";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Shadow AI Discovery — Aggregate — TAI Suite",
+  description: "Ranked tools, use cases, and risk flags across all analyzed survey responses.",
+};
 
 function countBy(values: string[]): { label: string; count: number }[] {
   const counts = new Map<string, number>();
@@ -14,13 +20,19 @@ function countBy(values: string[]): { label: string; count: number }[] {
     .sort((a, b) => b.count - a.count);
 }
 
-export default function AggregatePage() {
-  const responses = getSurveyResponses().filter((r) => r.analysis !== null);
+type AnalyzedResponse = SurveyResponse & { analysis: NonNullable<SurveyResponse["analysis"]> };
 
-  const tools = countBy(responses.flatMap((r) => r.analysis!.toolsMentioned));
-  const useCases = countBy(responses.map((r) => r.analysis!.useCaseCategory));
+function hasAnalysis(response: SurveyResponse): response is AnalyzedResponse {
+  return response.analysis !== null;
+}
+
+export default function AggregatePage() {
+  const responses = getSurveyResponses().filter(hasAnalysis);
+
+  const tools = countBy(responses.flatMap((r) => r.analysis.toolsMentioned));
+  const useCases = countBy(responses.map((r) => r.analysis.useCaseCategory));
   const riskFlags = countBy(
-    responses.map((r) => r.analysis!.riskFlag).filter((flag): flag is string => flag !== null)
+    responses.map((r) => r.analysis.riskFlag).filter((flag): flag is string => flag !== null)
   );
 
   return (

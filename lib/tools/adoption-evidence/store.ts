@@ -1,4 +1,4 @@
-import type { AdoptionAssessment } from "@/lib/schemas/adoption-assessment";
+import type { AdoptionAssessment } from "./schema";
 
 export type AdoptionWorkflow = {
   id: string;
@@ -43,6 +43,17 @@ function round1(value: number): number {
  */
 export function computeAdoptionMetrics(workflow: AdoptionWorkflow): AdoptionMetrics {
   const weeks = workflow.weeklyRuns;
+  if (weeks.length === 0) {
+    return {
+      score: 0,
+      level: "stalled",
+      recentAvgRuns: 0,
+      olderAvgRuns: 0,
+      adherencePoints: 0,
+      trendPoints: 0,
+      recencyPoints: 0,
+    };
+  }
   const recent = weeks.slice(-4);
   const older = weeks.slice(0, Math.max(weeks.length - 4, 0));
   const recentTotal = recent.reduce((a, b) => a + b, 0);

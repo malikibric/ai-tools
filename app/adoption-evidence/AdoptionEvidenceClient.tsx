@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
-import { AdoptionPill } from "@/lib/ui/AdoptionPill";
+import { AdoptionPill } from "./AdoptionPill";
 import {
   computeAdoptionMetrics,
   summarizeAdoption,
@@ -10,7 +10,7 @@ import {
   type AdoptionSummary,
   type AdoptionWorkflow,
   type AdoptionLevel,
-} from "@/lib/store/adoption-workflows";
+} from "@/lib/tools/adoption-evidence/store";
 
 const LEVELS: { key: AdoptionLevel; label: string }[] = [
   { key: "strong", label: "Strong" },
@@ -80,8 +80,9 @@ export function AdoptionEvidenceClient({
   const selectedMetrics: AdoptionMetrics | null = selected ? computeAdoptionMetrics(selected) : null;
 
   function applyWorkflow(updated: AdoptionWorkflow) {
-    setWorkflows((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
-    setSummary(summarizeAdoption(workflows.map((w) => (w.id === updated.id ? updated : w))));
+    const next = workflows.map((w) => (w.id === updated.id ? updated : w));
+    setWorkflows(next);
+    setSummary(summarizeAdoption(next));
     setSelectedId(updated.id);
   }
 

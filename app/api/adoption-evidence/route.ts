@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callStructured, classifyError } from "@/lib/ai";
-import { AdoptionAssessmentSchema } from "@/lib/schemas/adoption-assessment";
+import { badRequest, notFound, readJsonBody } from "@/lib/http";
+import { AdoptionAssessmentSchema } from "@/lib/tools/adoption-evidence/schema";
 import {
   computeAdoptionMetrics,
   getAdoptionWorkflowById,
   setAdoptionAssessment,
   type AdoptionWorkflow,
-} from "@/lib/store/adoption-workflows";
+} from "@/lib/tools/adoption-evidence/store";
+
+const RequestSchema = z.object({ workflowId: z.string().min(1) });
 
 function buildPrompt(workflow: AdoptionWorkflow) {
   const metrics = computeAdoptionMetrics(workflow);
@@ -33,21 +37,11 @@ Produce:
 }
 
 export async function POST(request: Request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
-      { status: 400 }
-    );
-  }
-  const workflowId = body.workflowId as string;
-  const workflow = getAdoptionWorkflowById(workflowId);
+  const body = await readJsonBody(request, RequestSchema);
+  if (!body) return badRequest("workflowId is required.");
 
-  if (!workflow) {
-    return NextResponse.json({ error: { kind: "not_found", message: "Workflow not found." } }, { status: 404 });
-  }
+  const workflow = getAdoptionWorkflowById(body.workflowId);
+  if (!workflow) return notFound("Workflow not found.");
 
   try {
     const assessment = await callStructured(AdoptionAssessmentSchema, buildPrompt(workflow));

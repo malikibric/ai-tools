@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageShell } from "@/lib/ui/PageShell";
 import { SurveyForm } from "./SurveyForm";
+
+export const metadata: Metadata = {
+  title: "Shadow AI Discovery Scanner — TAI Suite",
+  description: "Surveys informal AI usage and aggregates it into a rollout-planning artifact.",
+};
 
 export default function ShadowScannerPage() {
   return (

@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { PageShell } from "@/lib/ui/PageShell";
-import { getSubmissions } from "@/lib/store/submissions";
+import { getSubmissions } from "@/lib/tools/review-copilot/store";
 import { ReviewCopilotClient } from "./ReviewCopilotClient";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Manager Review Copilot — TAI Suite",
+  description: "Turns a raw employee workflow submission into a structured brief a manager can act on.",
+};
 
 export default function ReviewCopilotPage() {
   const submissions = getSubmissions();

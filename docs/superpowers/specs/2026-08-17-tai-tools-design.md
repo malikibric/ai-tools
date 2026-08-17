@@ -19,34 +19,38 @@ Full problem statements and hard constraints are in `prompt.md` at the repo root
 
 ## Architecture
 
-One Next.js 15 (App Router) + TypeScript app, deployable as a single Vercel project. Each tool is a self-contained feature folder (UI page + its own API routes); cross-tool code (design tokens, AI call wrapper, per-tool schemas, in-memory stores) lives under `lib/`.
+One Next.js 15 (App Router) + TypeScript app, deployable as a single Vercel project. Each tool is a self-contained feature folder — its page, client components, tool-specific UI, schema, and store all live under one directory — while cross-tool code (design tokens, AI call wrapper, HTTP validation, shared UI) lives under `lib/`.
 
 ```
 app/
   page.tsx                     # landing page — 4 tool cards
   layout.tsx, globals.css      # dark navy + amber tokens, Space Grotesk/Inter/IBM Plex Mono
-  adoption-evidence/page.tsx
-  api/adoption-evidence/route.ts         # POST: run Gemini adoption analysis on one workflow
-  api/adoption-evidence/heartbeat/route.ts  # POST: workflow phones home with a run (telemetry)
-  drift-monitor/page.tsx
-  api/drift-monitor/route.ts   # POST: run health check on one workflow
-  review-copilot/page.tsx
-  api/review-copilot/route.ts  # POST: submit + generate brief; PATCH: set approval status
-  shadow-scanner/page.tsx
-  api/shadow-scanner/route.ts  # POST: submit response + analyze; GET: aggregate view
+  adoption-evidence/
+    page.tsx                   # server page (reads the store directly, computes summary)
+    AdoptionEvidenceClient.tsx # dashboard: score cards, sparklines, detail panel
+    AdoptionPill.tsx           # tool-specific level pill
+  drift-monitor/
+    page.tsx, DriftMonitorClient.tsx, RiskPill.tsx
+  review-copilot/
+    page.tsx, ReviewCopilotClient.tsx, Badge.tsx
+  shadow-scanner/
+    page.tsx, SurveyForm.tsx
+    aggregate/page.tsx         # plain-JS aggregate view over structured analyses
+  api/
+    adoption-evidence/route.ts         # POST: run Gemini adoption analysis on one workflow
+    adoption-evidence/heartbeat/route.ts  # POST: workflow phones home with a run (telemetry)
+    drift-monitor/route.ts             # POST: run health check on one workflow
+    review-copilot/route.ts            # POST: submit + generate brief; PATCH: set approval status
+    shadow-scanner/route.ts            # POST: submit response + analyze
 lib/
   ai.ts                         # callStructured(schema, prompt) — single Gemini/Vercel-AI-SDK wrapper
-  schemas/
-    adoption-assessment.ts      # Zod schema — doubles as the structured-output schema and TS type
-    drift-assessment.ts
-    review-brief.ts
-    survey-analysis.ts
-  store/
-    adoption-workflows.ts       # instrumented workflows + score computation (deterministic)
-    workflows.ts
-    submissions.ts
-    survey-responses.ts
-  ui/                            # shared Card, Badge, RiskPill, AdoptionPill, PageShell
+  http.ts                       # readJsonBody (Zod-validated body), badRequest/notFound helpers
+  tools/                        # one folder per tool — schema doubles as the TS type
+    adoption-evidence/schema.ts, store.ts
+    drift-monitor/schema.ts, store.ts
+    review-copilot/schema.ts, store.ts
+    shadow-scanner/schema.ts, store.ts
+  ui/                           # shared Card, PageShell
 ```
 
 **Backend mechanism:** Route Handlers (`app/api/**/route.ts`), not Server Actions. Chosen because each tool's AI-calling unit is a literal, curl-able endpoint with its own schema and fallback behavior, which is easier to walk through in an interview than an implicit server-action call.
@@ -64,13 +68,13 @@ lib/
 Each tool has exactly one Zod schema that serves double duty: the structured-output schema passed to the model, and the TypeScript type for that tool's result. No separate parsing or mapping layer between "what the model returns" and "what the UI renders."
 
 ```ts
-// lib/schemas/adoption-assessment.ts
+// lib/tools/adoption-evidence/schema.ts
 export const AdoptionAssessment = z.object({
   diagnosis: z.string(),           // plain-language why adoption is at this level
   suggestedIntervention: z.string(), // one line, for the account manager / CSM
 });
 
-// lib/schemas/drift-assessment.ts
+// lib/tools/drift-monitor/schema.ts
 export const DriftAssessment = z.object({
   riskLevel: z.enum(["healthy", "at_risk", "broken"]),
   dependencyChangeLikelihood: z.string(),   // 1-2 sentence reasoning
@@ -78,7 +82,7 @@ export const DriftAssessment = z.object({
   suggestedNextAction: z.string(),           // one line
 });
 
-// lib/schemas/review-brief.ts
+// lib/tools/review-copilot/schema.ts
 export const ReviewBrief = z.object({
   plainLanguageExplanation: z.string(),
   managerQuestions: z.array(z.string()).min(3).max(5),
@@ -87,7 +91,7 @@ export const ReviewBrief = z.object({
   recommendationReasoning: z.string(),
 });
 
-// lib/schemas/survey-analysis.ts
+// lib/tools/shadow-scanner/schema.ts
 export const SurveyAnalysis = z.object({
   toolsMentioned: z.array(z.string()),
   useCaseCategory: z.string(),
@@ -98,20 +102,20 @@ export const SurveyAnalysis = z.object({
 
 Entity records (`AdoptionWorkflow`, `Workflow`, `Submission`, `SurveyResponse`) hold their seed fields plus an optional `assessment` / `brief` / `analysis` field of the corresponding schema type, populated once the AI call for that record has run. `Submission` additionally carries a mutable `status`, changed only by the manager action, never by the AI call.
 
-**Design principle — arithmetic in code, judgment in AI:** In the Adoption Evidence Engine the behavior-change score, adoption level, and executive aggregates are computed deterministically in plain code (`computeAdoptionMetrics`, `summarizeAdoption` in `lib/store/adoption-workflows.ts`). The score is auditable and reproducible — an executive can verify exactly why a workflow scored 62. The AI only explains the score and recommends the next action, and it is told explicitly not to question the computed level. The Shadow Scanner's aggregate view follows the same pattern (plain JS counts over structured analyses, no AI call).
+**Design principle — arithmetic in code, judgment in AI:** In the Adoption Evidence Engine the behavior-change score, adoption level, and executive aggregates are computed deterministically in plain code (`computeAdoptionMetrics`, `summarizeAdoption` in `lib/tools/adoption-evidence/store.ts`). The score is auditable and reproducible — an executive can verify exactly why a workflow scored 62. The AI only explains the score and recommends the next action, and it is told explicitly not to question the computed level. The Shadow Scanner's aggregate view follows the same pattern (plain JS counts over structured analyses, no AI call).
 
 Stores are plain arrays per module (`let adoptionWorkflows: AdoptionWorkflow[] = [...]`), seeded at import time, mutated in place by route handlers.
 
 ## Per-tool flow
 
 ### 1. Adoption Evidence Engine
-- Initial render is a server component reading `lib/store/adoption-workflows.ts` directly (no fetch needed), with scores computed server-side and an executive summary strip (workflows tracked, strong count, avg score, claimed vs measured time saved).
+- Initial render is a server component reading `lib/tools/adoption-evidence/store.ts` directly (no fetch needed), with scores computed server-side and an executive summary strip (workflows tracked, strong count, avg score, claimed vs measured time saved).
 - Each workflow's card shows its score, level pill, claimed vs actual runs, last-run recency, and a telemetry sparkline. "Simulate run" → `POST /api/adoption-evidence/heartbeat { workflowId }` → the store increments the current week's run count and stamps `lastRunAt` — the exact call a real instrumented workflow would make after each run. Score and summary react immediately.
 - "Run Adoption Analysis" → `POST /api/adoption-evidence { workflowId }` → route computes the deterministic metrics, calls `callStructured(AdoptionAssessment, prompt)` with name/description/claimed frequency/weekly runs/score/level, writes the assessment onto the store record → client updates the card in place and opens its detail panel (score breakdown + diagnosis + suggested intervention).
 - Seed data (4 workflows, one per level): strong (usage growing, on frequency), slipping (frequency quietly sliding), stalled (approval-theater — used a month, then zero), at-risk (usage collapsed as a dependency died).
 
 ### 2. Workflow Drift Monitor
-- Initial render is a server component reading `lib/store/workflows.ts` directly (no fetch needed), grouped into columns: healthy / at-risk / broken / not-yet-checked.
+- Initial render is a server component reading `lib/tools/drift-monitor/store.ts` directly (no fetch needed), grouped into columns: healthy / at-risk / broken / not-yet-checked.
 - "Run Health Check" → `POST /api/drift-monitor { workflowId }` → route loads the workflow, calls `callStructured(DriftAssessment, prompt)` with name/description/dependencies/approved+verified dates → writes `assessment` onto the store record → returns it → client updates that card in place and opens its detail panel (shows full reasoning + suggested action).
 - Seed data (3 workflows, chosen to show range): one healthy (stable internal script, nothing flagged in its own description), one at-risk (dependency description hints at a recent breaking change), one broken (dependency list explicitly names a deprecated API).
 

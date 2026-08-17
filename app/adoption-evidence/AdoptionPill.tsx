@@ -1,4 +1,4 @@
-import type { AdoptionLevel } from "@/lib/store/adoption-workflows";
+import type { AdoptionLevel } from "@/lib/tools/adoption-evidence/store";
 
 const LABELS: Record<AdoptionLevel, string> = {
   strong: "Strong",

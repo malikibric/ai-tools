@@ -1,4 +1,4 @@
-import type { SurveyAnalysis } from "@/lib/schemas/survey-analysis";
+import type { SurveyAnalysis } from "./schema";
 
 export type SurveyResponse = {
   id: string;
