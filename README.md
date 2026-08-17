@@ -1,20 +1,30 @@
 # TAI Labs Prototype Suite
 
-Three AI-backed prototype tools built for a TAI Labs Product/GTM Engineer Intern take-home assessment. See `prompt.md` for the original brief and `docs/superpowers/specs/2026-08-17-tai-tools-design.md` for the full design.
+Four AI-backed prototype tools built for a TAI Labs Product/GTM Engineer Intern take-home assessment. See `prompt.md` for the original brief, `docs/assessment-part1-answers.md` for the written Part 1 answers (tools, architecture, deployment, novelty), and `docs/superpowers/specs/2026-08-17-tai-tools-design.md` for the design.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in ANTHROPIC_API_KEY
+cp .env.example .env.local   # fill in GOOGLE_API_KEY
 npm run dev
 ```
 
-Open `http://localhost:3000`. No database or other setup required — all data is seeded in-memory on server start.
+Open `http://localhost:3000`. No database or other setup required — all data is seeded in-memory on server start. The model used for AI analysis is Gemini (default `gemini-2.5-flash`, overridable via the `GOOGLE_MODEL` env var).
+
+## Adoption Evidence Engine (`/adoption-evidence`)
+
+**What it does:** Approved workflows are "instrumented" — after every run they phone home with a heartbeat. The engine converts that telemetry into a deterministic behavior-change score (0-100: adherence to the claimed run frequency, trend, recency) with four levels: strong / slipping / at-risk / stalled. An executive strip shows measured vs claimed time saved, average score, and adoption-theater count. "Run Adoption Analysis" sends the workflow's telemetry and description to Gemini, which returns a structured diagnosis and a suggested intervention. "Simulate run" posts a heartbeat to the ingestion endpoint, exactly as a real instrumented workflow would.
+
+**Why architected this way:** The score is arithmetic, computed in plain code — reproducible and auditable by an executive; the AI explains the *why* and recommends the *what next*, and is forced into a strict schema so the UI always gets the same shape. This separation ("arithmetic in code, judgment in AI") is the same pattern as the Shadow Scanner's aggregate view, and it means the dashboard still works even if the model is down.
+
+**What I'd do differently with more time:** Persist heartbeats as an append-only event stream in Postgres instead of an in-memory array, so adoption trends survive restarts and rollups run on a schedule. I'd also instrument the workflow's *output* (e.g. was the produced artifact actually referenced downstream) rather than only counting runs — run counts can be gamed, reliance is harder to fake.
+
+**Why this matters to TAI's clients:** Right now TAI proves adoption once, at launch, mostly by self-report. This turns every approved workflow into a continuously-reported evidence stream — so the executive asking "did the AI training actually change the work?" gets a dashboard answer instead of a promise, and adoption theater is caught before it costs a renewal.
 
 ## Workflow Drift Monitor (`/drift-monitor`)
 
-**What it does:** Lists the org's approved workflows with their dependencies and approval/verification dates. "Run Health Check" sends a workflow's description and dependency list to Claude, which returns a structured risk assessment (healthy / at-risk / broken), reasoning on dependency and description consistency, and a one-line suggested next action.
+**What it does:** Lists the org's approved workflows with their dependencies and approval/verification dates. "Run Health Check" sends a workflow's description and dependency list to Gemini, which returns a structured risk assessment (healthy / at-risk / broken), reasoning on dependency and description consistency, and a one-line suggested next action.
 
 **Why architected this way:** The risk assessment is inherently a judgment call over unstructured text (does this dependency sound stale? does the description still match how it's used?) — exactly the kind of reasoning an LLM is suited for, and exactly why it needs a forced schema rather than freeform text: the UI needs a reliable `riskLevel` enum to sort into columns, not prose to parse. State lives in-memory because "assessed once, checked again later" doesn't need durability beyond a single demo session.
 
@@ -24,7 +34,7 @@ Open `http://localhost:3000`. No database or other setup required — all data i
 
 ## Manager Review Copilot (`/review-copilot`)
 
-**What it does:** An employee submits a workflow (what it does, what it uses, claimed time savings, data touched). Claude generates a structured review brief: a plain-language explanation, 3-5 questions the manager should ask, risk flags, and a recommendation with reasoning. The manager approves, approves with changes, or rejects — a simple in-memory status change.
+**What it does:** An employee submits a workflow (what it does, what it uses, claimed time savings, data touched). Gemini generates a structured review brief: a plain-language explanation, 3-5 questions the manager should ask, risk flags, and a recommendation with reasoning. The manager approves, approves with changes, or rejects — a simple in-memory status change.
 
 **Why architected this way:** The brief's whole value is a fixed, always-present shape — a manager under time pressure needs the same fields every time, not a chatty response that sometimes has a risk section and sometimes doesn't. Forcing the schema guarantees that. Approval is deliberately just a status flip with no re-call to the model — the AI's job is to inform the decision, not make it.
 
@@ -34,7 +44,7 @@ Open `http://localhost:3000`. No database or other setup required — all data i
 
 ## Shadow AI Discovery Scanner (`/shadow-scanner`, `/shadow-scanner/aggregate`)
 
-**What it does:** A short free-text survey asks what AI tools someone has used at work informally, for what, and how often. Claude extracts the tools mentioned, a use-case category, an informal-usage risk flag (or null), and a one-line summary per response. The aggregate view (plain JS, no AI call) ranks the most common tools, use cases, and risk flags across all responses.
+**What it does:** A short free-text survey asks what AI tools someone has used at work informally, for what, and how often. Gemini extracts the tools mentioned, a use-case category, an informal-usage risk flag (or null), and a one-line summary per response. The aggregate view (plain JS, no AI call) ranks the most common tools, use cases, and risk flags across all responses.
 
 **Why architected this way:** Individual responses need AI because they're free text with no fixed shape — someone might mention two tools in one sentence or bury a risk in a casual aside. The aggregate view is deliberately not an AI call: once each response has a structured `analysis`, counting and ranking is plain arithmetic, and doing it in code instead of asking a model to "summarize the responses" keeps the numbers exact and reproducible.
 
@@ -44,7 +54,7 @@ Open `http://localhost:3000`. No database or other setup required — all data i
 
 ## Build verification
 
-- `npm run build` passes.
-- Each tool sanity-checked against its seed data: 3 workflows (one healthy, one at-risk, one broken) in Drift Monitor; 3 submissions of varying quality in Review Copilot; 8 survey responses (2 with real risk flags) in the Shadow Scanner aggregate view.
-- Error banners verified by running each tool with `ANTHROPIC_API_KEY` unset.
-- Note: this sandbox had no `ANTHROPIC_API_KEY` available, so the live-AI paths (actual Claude-generated health checks, review briefs, and survey analyses) were not walked end-to-end here. What was verified in this environment: `npm run build` passes cleanly, all five routes (`/`, `/drift-monitor`, `/review-copilot`, `/shadow-scanner`, `/shadow-scanner/aggregate`) render with a 200 and real HTML, and the no-key error banners return typed 502 JSON errors instead of crashing. Re-walking the seed-data paths with a real key (as described above) is deferred to whoever runs this locally with `ANTHROPIC_API_KEY` set.
+- `npm run build` and `npm run typecheck` pass.
+- Each tool sanity-checked against its seed data: 4 instrumented workflows (one per adoption level) in Adoption Evidence; 3 workflows (one healthy, one at-risk, one broken) in Drift Monitor; 3 submissions of varying quality in Review Copilot; 8 survey responses (2 with real risk flags) in the Shadow Scanner aggregate view.
+- Error banners verified by running each tool with `GOOGLE_API_KEY` unset.
+- Note: this sandbox had no `GOOGLE_API_KEY` available, so the live-AI paths (actual Gemini-generated adoption analyses, health checks, review briefs, and survey analyses) were not walked end-to-end here. What was verified in this environment: `npm run build` passes cleanly, all six routes (`/`, `/adoption-evidence`, `/drift-monitor`, `/review-copilot`, `/shadow-scanner`, `/shadow-scanner/aggregate`) render with a 200 and real HTML, the no-key error banners return typed 502 JSON errors instead of crashing, and the provider instantiation (`google("gemini-2.5-flash")`) is validated. Re-walking the seed-data paths with a real key (as described above) is deferred to whoever runs this locally with `GOOGLE_API_KEY` set.

@@ -3,6 +3,11 @@ import { Card } from "@/lib/ui/Card";
 
 const TOOLS = [
   {
+    href: "/adoption-evidence",
+    name: "Adoption Evidence Engine",
+    description: "Measures whether approved workflows actually changed the work — and proves it with telemetry.",
+  },
+  {
     href: "/drift-monitor",
     name: "Workflow Drift Monitor",
     description: "Flags approved workflows whose dependencies or behavior have likely drifted since approval.",
@@ -28,7 +33,7 @@ export default function HomePage() {
         Diagnose, teach, build, approve, measure — these three prototypes plug the gaps between shipping a workflow
         and knowing it still works.
       </p>
-      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid gap-5 sm:grid-cols-2">
         {TOOLS.map((tool) => (
           <Link key={tool.href} href={tool.href}>
             <Card className="h-full transition hover:border-amber">

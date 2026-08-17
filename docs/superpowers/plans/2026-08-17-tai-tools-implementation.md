@@ -1,5 +1,7 @@
 # TAI Labs Tool Prototypes Implementation Plan
 
+> **Superseded:** This plan covers the original three tools. The repo has since shipped a fourth tool (Adoption Evidence Engine) and switched the AI provider from Anthropic (Claude) to Google (Gemini, `@ai-sdk/google`, `GOOGLE_API_KEY` / optional `GOOGLE_MODEL`). See the current spec at `docs/superpowers/specs/2026-08-17-tai-tools-design.md` and `docs/assessment-part1-answers.md`. This file is retained as history.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a single Next.js app containing three AI-backed tool prototypes (Workflow Drift Monitor, Manager Review Copilot, Shadow AI Discovery Scanner) for a TAI Labs take-home assessment, matching the design spec at `docs/superpowers/specs/2026-08-17-tai-tools-design.md`.

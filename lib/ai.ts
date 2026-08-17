@@ -1,10 +1,10 @@
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import type { ZodSchema } from "zod";
 
 export class MissingApiKeyError extends Error {
   constructor() {
-    super("ANTHROPIC_API_KEY is not set.");
+    super("GOOGLE_API_KEY is not set.");
     this.name = "MissingApiKeyError";
   }
 }
@@ -16,16 +16,16 @@ export class AICallError extends Error {
   }
 }
 
-const MODEL_ID = "claude-sonnet-5";
+const MODEL_ID = process.env.GOOGLE_MODEL ?? "gemini-2.5-flash";
 
 export async function callStructured<T>(schema: ZodSchema<T>, prompt: string): Promise<T> {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GOOGLE_API_KEY) {
     throw new MissingApiKeyError();
   }
 
   try {
     const { object } = await generateObject({
-      model: anthropic(MODEL_ID),
+      model: google(MODEL_ID),
       schema,
       prompt,
     });
@@ -45,7 +45,7 @@ export type StructuredCallErrorKind = "missing_api_key" | "ai_call_failed";
 
 export function classifyError(error: unknown): { kind: StructuredCallErrorKind; message: string } {
   if (error instanceof MissingApiKeyError) {
-    return { kind: "missing_api_key", message: "AI service unavailable — ANTHROPIC_API_KEY is not set." };
+    return { kind: "missing_api_key", message: "AI service unavailable — GOOGLE_API_KEY is not set." };
   }
   return { kind: "ai_call_failed", message: "Model returned unexpected output, try again." };
 }
