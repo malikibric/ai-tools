@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
 import { Badge } from "@/lib/ui/Badge";
 import type { Submission, SubmissionStatus } from "@/lib/store/submissions";
+import type { ReviewBrief } from "@/lib/schemas/review-brief";
 
 const STATUS_LABELS: Record<SubmissionStatus, string> = {
   pending: "Pending",
@@ -12,7 +13,7 @@ const STATUS_LABELS: Record<SubmissionStatus, string> = {
   rejected: "Rejected",
 };
 
-const RECOMMENDATION_LABELS: Record<string, string> = {
+const RECOMMENDATION_LABELS: Record<ReviewBrief["recommendation"], string> = {
   approve: "Approve",
   approve_with_changes: "Approve with changes",
   needs_discussion: "Needs discussion",
@@ -32,8 +33,33 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [errorBySubmission, setErrorBySubmission] = useState<Record<string, string>>({});
 
   const selected = submissions.find((s) => s.id === selectedId) ?? null;
+
+  async function generateBrief(id: string) {
+    setLoadingId(id);
+    setErrorBySubmission((prev) => ({ ...prev, [id]: "" }));
+    try {
+      const response = await fetch("/api/review-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorBySubmission((prev) => ({
+          ...prev,
+          [id]: data.error?.message ?? "Failed to generate review brief.",
+        }));
+        return;
+      }
+      setSubmissions((prev) => prev.map((s) => (s.id === id ? data.submission : s)));
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -152,7 +178,27 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
 
       <Card>
         {!selected && <p className="text-sm text-text-muted">Select a submission to see its review brief.</p>}
-        {selected && !selected.brief && <p className="text-sm text-text-muted">Generating review brief...</p>}
+        {selected && !selected.brief && (
+          <div>
+            <h3 className="font-display text-base font-semibold text-text">
+              {selected.employeeName}&apos;s workflow
+            </h3>
+            <p className="mt-2 text-sm text-text-muted">
+              No review brief yet. Generate one to see a plain-language explanation, questions to ask, and risk flags.
+            </p>
+            <button
+              type="button"
+              onClick={() => generateBrief(selected.id)}
+              disabled={loadingId === selected.id}
+              className="mt-4 rounded border border-amber px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft disabled:opacity-50"
+            >
+              {loadingId === selected.id ? "Generating..." : "Generate Review Brief"}
+            </button>
+            {errorBySubmission[selected.id] && (
+              <p className="mt-2 text-xs text-broken">{errorBySubmission[selected.id]}</p>
+            )}
+          </div>
+        )}
         {selected?.brief && (
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">

@@ -2,6 +2,8 @@ import { PageShell } from "@/lib/ui/PageShell";
 import { getWorkflows } from "@/lib/store/workflows";
 import { DriftMonitorClient } from "./DriftMonitorClient";
 
+export const dynamic = "force-dynamic";
+
 export default function DriftMonitorPage() {
   const workflows = getWorkflows();
 

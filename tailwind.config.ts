@@ -12,9 +12,9 @@ const config: Config = {
         "text-muted": "var(--color-text-muted)",
         amber: "var(--color-amber)",
         "amber-soft": "var(--color-amber-soft)",
-        healthy: "var(--color-healthy)",
-        "at-risk": "var(--color-at-risk)",
-        broken: "var(--color-broken)",
+        healthy: "rgb(var(--color-healthy) / <alpha-value>)",
+        "at-risk": "rgb(var(--color-at-risk) / <alpha-value>)",
+        broken: "rgb(var(--color-broken) / <alpha-value>)",
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],

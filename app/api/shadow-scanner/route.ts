@@ -18,7 +18,15 @@ Extract:
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
+      { status: 400 }
+    );
+  }
   const answers = {
     toolsUsed: body.toolsUsed as string,
     whatFor: body.whatFor as string,

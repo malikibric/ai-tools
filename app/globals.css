@@ -10,7 +10,8 @@
   --color-text-muted: #93a0bf;
   --color-amber: #f5a524;
   --color-amber-soft: #f5a52426;
-  --color-healthy: #34d399;
-  --color-at-risk: #f5a524;
-  --color-broken: #f87171;
+  /* RGB channel triplets so Tailwind can apply opacity modifiers (e.g. bg-healthy/15). */
+  --color-healthy: 52 211 153; /* #34d399 */
+  --color-at-risk: 245 165 36; /* #f5a524 */
+  --color-broken: 248 113 113; /* #f87171 */
 }

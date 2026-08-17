@@ -30,15 +30,46 @@ Produce:
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
-  const { employeeName, whatItDoes, toolOrPromptUsed, claimedTimeSavedPerWeek, dataTouched } = body;
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
+      { status: 400 }
+    );
+  }
 
-  const submission = addSubmission({ employeeName, whatItDoes, toolOrPromptUsed, claimedTimeSavedPerWeek, dataTouched });
+  let submission;
+
+  if (body?.id) {
+    // Generate a brief for an existing submission (e.g. a seeded one).
+    const existing = getSubmissionById(body.id as string);
+    if (!existing) {
+      return NextResponse.json({ error: { kind: "not_found", message: "Submission not found." } }, { status: 404 });
+    }
+    submission = existing;
+  } else {
+    // Create a new submission, then generate its brief.
+    const { employeeName, whatItDoes, toolOrPromptUsed, claimedTimeSavedPerWeek, dataTouched } = body;
+    submission = addSubmission({
+      employeeName,
+      whatItDoes,
+      toolOrPromptUsed,
+      claimedTimeSavedPerWeek,
+      dataTouched,
+    });
+  }
 
   try {
     const brief = await callStructured(
       ReviewBriefSchema,
-      buildPrompt({ whatItDoes, toolOrPromptUsed, claimedTimeSavedPerWeek, dataTouched })
+      buildPrompt({
+        whatItDoes: submission.whatItDoes,
+        toolOrPromptUsed: submission.toolOrPromptUsed,
+        claimedTimeSavedPerWeek: submission.claimedTimeSavedPerWeek,
+        dataTouched: submission.dataTouched,
+      })
     );
     const updated = setSubmissionBrief(submission.id, brief);
     return NextResponse.json({ submission: updated });
@@ -49,7 +80,15 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: { kind: "invalid_body", message: "Request body must be valid JSON." } },
+      { status: 400 }
+    );
+  }
   const { id, status } = body as { id: string; status: SubmissionStatus };
 
   const existing = getSubmissionById(id);

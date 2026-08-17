@@ -2,6 +2,8 @@ import { PageShell } from "@/lib/ui/PageShell";
 import { getSubmissions } from "@/lib/store/submissions";
 import { ReviewCopilotClient } from "./ReviewCopilotClient";
 
+export const dynamic = "force-dynamic";
+
 export default function ReviewCopilotPage() {
   const submissions = getSubmissions();
 

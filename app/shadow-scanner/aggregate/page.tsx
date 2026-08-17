@@ -2,6 +2,8 @@ import { PageShell } from "@/lib/ui/PageShell";
 import { Card } from "@/lib/ui/Card";
 import { getSurveyResponses } from "@/lib/store/survey-responses";
 
+export const dynamic = "force-dynamic";
+
 function countBy(values: string[]): { label: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const value of values) {
