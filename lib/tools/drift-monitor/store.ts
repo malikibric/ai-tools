@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { prisma } from "@/lib/db";
+import { isNotFoundError, prisma } from "@/lib/db";
 import type { DriftAssessment } from "./schema";
 
 export type Workflow = {
@@ -77,15 +77,29 @@ export async function updateWorkflow(id: string, input: Partial<DriftWorkflowInp
   if (input.dependencies !== undefined) data.dependencies = input.dependencies;
   if (input.dateApproved !== undefined) data.dateApproved = input.dateApproved;
   if (input.lastVerified !== undefined) data.lastVerified = input.lastVerified;
-  const r = await prisma.driftWorkflow.update({ where: { id }, data });
-  return fromRow(r);
+  try {
+    const r = await prisma.driftWorkflow.update({ where: { id }, data });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function deleteWorkflow(id: string): Promise<void> {
-  await prisma.driftWorkflow.delete({ where: { id } });
+  try {
+    await prisma.driftWorkflow.delete({ where: { id } });
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error;
+  }
 }
 
 export async function updateWorkflowAssessment(id: string, assessment: DriftAssessment): Promise<Workflow | null> {
-  const r = await prisma.driftWorkflow.update({ where: { id }, data: { assessment } });
-  return fromRow(r);
+  try {
+    const r = await prisma.driftWorkflow.update({ where: { id }, data: { assessment } });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }

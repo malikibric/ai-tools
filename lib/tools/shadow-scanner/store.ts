@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { prisma } from "@/lib/db";
+import { isNotFoundError, prisma } from "@/lib/db";
 import type { SurveyAnalysis } from "./schema";
 
 export type SurveyResponse = {
@@ -55,18 +55,32 @@ export async function createSurveyResponse(input: SurveyInput): Promise<SurveyRe
 }
 
 export async function updateSurveyResponse(id: string, input: SurveyInput): Promise<SurveyResponse | null> {
-  const r = await prisma.surveyResponse.update({
-    where: { id },
-    data: { toolsUsed: input.toolsUsed, whatFor: input.whatFor, howOften: input.howOften },
-  });
-  return fromRow(r);
+  try {
+    const r = await prisma.surveyResponse.update({
+      where: { id },
+      data: { toolsUsed: input.toolsUsed, whatFor: input.whatFor, howOften: input.howOften },
+    });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function setSurveyResponseAnalysis(id: string, analysis: SurveyAnalysis): Promise<SurveyResponse | null> {
-  const r = await prisma.surveyResponse.update({ where: { id }, data: { analysis } });
-  return fromRow(r);
+  try {
+    const r = await prisma.surveyResponse.update({ where: { id }, data: { analysis } });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function deleteSurveyResponse(id: string): Promise<void> {
-  await prisma.surveyResponse.delete({ where: { id } });
+  try {
+    await prisma.surveyResponse.delete({ where: { id } });
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error;
+  }
 }

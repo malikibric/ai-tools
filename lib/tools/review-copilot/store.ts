@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { prisma } from "@/lib/db";
+import { isNotFoundError, prisma } from "@/lib/db";
 import type { ReviewBrief } from "./schema";
 
 export type SubmissionStatus = "pending" | "approved" | "approved_with_changes" | "rejected";
@@ -77,20 +77,39 @@ export async function updateSubmission(id: string, input: Partial<SubmissionInpu
   if (input.toolOrPromptUsed !== undefined) data.toolOrPromptUsed = input.toolOrPromptUsed;
   if (input.claimedTimeSavedPerWeek !== undefined) data.claimedTimeSavedPerWeek = input.claimedTimeSavedPerWeek;
   if (input.dataTouched !== undefined) data.dataTouched = input.dataTouched;
-  const r = await prisma.submission.update({ where: { id }, data });
-  return fromRow(r);
+  try {
+    const r = await prisma.submission.update({ where: { id }, data });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function setSubmissionBrief(id: string, brief: ReviewBrief): Promise<Submission | null> {
-  const r = await prisma.submission.update({ where: { id }, data: { brief } });
-  return fromRow(r);
+  try {
+    const r = await prisma.submission.update({ where: { id }, data: { brief } });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function setSubmissionStatus(id: string, status: SubmissionStatus): Promise<Submission | null> {
-  const r = await prisma.submission.update({ where: { id }, data: { status } });
-  return fromRow(r);
+  try {
+    const r = await prisma.submission.update({ where: { id }, data: { status } });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function deleteSubmission(id: string): Promise<void> {
-  await prisma.submission.delete({ where: { id } });
+  try {
+    await prisma.submission.delete({ where: { id } });
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error;
+  }
 }

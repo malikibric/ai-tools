@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { prisma } from "@/lib/db";
+import { isNotFoundError, prisma } from "@/lib/db";
 import type { AdoptionAssessment } from "./schema";
 
 export type AdoptionWorkflow = {
@@ -176,17 +176,31 @@ export async function updateAdoptionWorkflow(
   if (input.claimedMinutesPerRun !== undefined) data.claimedMinutesPerRun = input.claimedMinutesPerRun;
   if (input.weeklyRuns !== undefined) data.weeklyRuns = input.weeklyRuns;
   if (input.lastRunAt !== undefined) data.lastRunAt = input.lastRunAt ? new Date(input.lastRunAt) : null;
-  const r = await prisma.adoptionWorkflow.update({ where: { id }, data });
-  return fromRow(r);
+  try {
+    const r = await prisma.adoptionWorkflow.update({ where: { id }, data });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function deleteAdoptionWorkflow(id: string): Promise<void> {
-  await prisma.adoptionWorkflow.delete({ where: { id } });
+  try {
+    await prisma.adoptionWorkflow.delete({ where: { id } });
+  } catch (error) {
+    if (!isNotFoundError(error)) throw error;
+  }
 }
 
 export async function setAdoptionAssessment(id: string, assessment: AdoptionAssessment): Promise<AdoptionWorkflow | null> {
-  const r = await prisma.adoptionWorkflow.update({ where: { id }, data: { assessment } });
-  return fromRow(r);
+  try {
+    const r = await prisma.adoptionWorkflow.update({ where: { id }, data: { assessment } });
+    return fromRow(r);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function recordHeartbeat(id: string): Promise<AdoptionWorkflow | null> {

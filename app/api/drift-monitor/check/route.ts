@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { callStructured, classifyError } from "@/lib/ai";
-import { badRequest, notFound, readJsonBody } from "@/lib/http";
+import { badRequest, notFound, readJsonBody, withDbErrors } from "@/lib/http";
 import { DriftAssessmentSchema } from "@/lib/tools/drift-monitor/schema";
 import { getWorkflowById, updateWorkflowAssessment, type Workflow } from "@/lib/tools/drift-monitor/store";
 
@@ -24,7 +24,7 @@ Assess:
 4. A single, concrete next action someone should take.`;
 }
 
-export async function POST(request: Request) {
+export const POST = withDbErrors(async (request: Request) => {
   const body = await readJsonBody(request, RequestSchema);
   if (!body) return badRequest("workflowId is required.");
 
@@ -39,4 +39,4 @@ export async function POST(request: Request) {
     const { kind, message } = classifyError(error);
     return NextResponse.json({ error: { kind, message } }, { status: 502 });
   }
-}
+});

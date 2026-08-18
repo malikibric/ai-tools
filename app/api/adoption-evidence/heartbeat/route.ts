@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { badRequest, notFound, readJsonBody } from "@/lib/http";
+import { badRequest, notFound, readJsonBody, withDbErrors } from "@/lib/http";
 import { computeAdoptionMetrics, recordHeartbeat } from "@/lib/tools/adoption-evidence/store";
 
 const RequestSchema = z.object({ workflowId: z.string().min(1) });
 
-export async function POST(request: Request) {
+export const POST = withDbErrors(async (request: Request) => {
   const body = await readJsonBody(request, RequestSchema);
   if (!body) return badRequest("workflowId is required.");
 
@@ -13,4 +13,4 @@ export async function POST(request: Request) {
   if (!updated) return notFound("Workflow not found.");
 
   return NextResponse.json({ workflow: updated, metrics: computeAdoptionMetrics(updated) });
-}
+});
