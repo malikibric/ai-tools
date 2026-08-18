@@ -10,7 +10,7 @@ cp .env.example .env.local   # fill in GOOGLE_API_KEY
 npm run dev
 ```
 
-Open `http://localhost:3000`. No database or other setup required — all data is seeded in-memory on server start. The model used for AI analysis is Gemini (default `gemini-2.5-flash`, overridable via the `GOOGLE_MODEL` env var).
+Open `http://localhost:3000`. No database or other setup required — all data is seeded in-memory on server start. The model used for AI analysis is Gemini (default `gemini-3.5-flash-lite` — the cheapest tier; overridable via the `GOOGLE_MODEL` env var).
 
 ## Adoption Evidence Engine (`/adoption-evidence`)
 
@@ -57,4 +57,4 @@ Open `http://localhost:3000`. No database or other setup required — all data i
 - `npm run build` and `npm run typecheck` pass.
 - Each tool sanity-checked against its seed data: 4 instrumented workflows (one per adoption level) in Adoption Evidence; 3 workflows (one healthy, one at-risk, one broken) in Drift Monitor; 3 submissions of varying quality in Review Copilot; 8 survey responses (2 with real risk flags) in the Shadow Scanner aggregate view.
 - Error banners verified by running each tool with `GOOGLE_API_KEY` unset.
-- Note: this sandbox had no `GOOGLE_API_KEY` available, so the live-AI paths (actual Gemini-generated adoption analyses, health checks, review briefs, and survey analyses) were not walked end-to-end here. What was verified in this environment: `npm run build` passes cleanly, all six routes (`/`, `/adoption-evidence`, `/drift-monitor`, `/review-copilot`, `/shadow-scanner`, `/shadow-scanner/aggregate`) render with a 200 and real HTML, the no-key error banners return typed 502 JSON errors instead of crashing, and the provider instantiation (`google("gemini-2.5-flash")`) is validated. Re-walking the seed-data paths with a real key (as described above) is deferred to whoever runs this locally with `GOOGLE_API_KEY` set.
+- Note: `npm run build` passes cleanly and all six routes (`/`, `/adoption-evidence`, `/drift-monitor`, `/review-copilot`, `/shadow-scanner`, `/shadow-scanner/aggregate`) render with a 200 and real HTML; the no-key error banners return typed 502 JSON errors instead of crashing. Live-AI paths (adoption analysis, drift health checks, review briefs, survey analyses, heartbeat) were walked end-to-end with a real `GOOGLE_API_KEY` on `gemini-3.6-flash` and re-verified on `gemini-3.5-flash-lite`. Note: `gemini-2.5-flash` is retired for new users — the API rejects it and recommends the 3.x flash line, which is why the default is `gemini-3.5-flash-lite`.

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/lib/ui/Card";
+import { Btn } from "@/lib/ui/Btn";
 
 const EMPTY_FORM = { toolsUsed: "", whatFor: "", howOften: "" };
 
@@ -39,16 +40,12 @@ export function SurveyForm() {
       <Card>
         <p className="text-sm text-text">Thanks — your response has been recorded.</p>
         <div className="mt-4 flex gap-3">
-          <button
-            type="button"
-            onClick={() => setSubmitted(false)}
-            className="rounded border border-amber px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft"
-          >
+          <Btn type="button" onClick={() => setSubmitted(false)}>
             Submit another response
-          </button>
+          </Btn>
           <Link
             href="/shadow-scanner/aggregate"
-            className="rounded border border-border px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-text-muted hover:text-text"
+            className="rounded border border-border px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-text-muted transition-colors hover:border-amber hover:text-text"
           >
             View aggregate results
           </Link>
@@ -89,13 +86,9 @@ export function SurveyForm() {
             className="mt-1 w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
           />
         </label>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded border border-amber px-4 py-2 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft disabled:opacity-50"
-        >
+        <Btn type="submit" disabled={submitting} className="px-4 py-2">
           {submitting ? "Submitting..." : "Submit response"}
-        </button>
+        </Btn>
         {error && <p className="text-xs text-broken">{error}</p>}
       </form>
     </Card>

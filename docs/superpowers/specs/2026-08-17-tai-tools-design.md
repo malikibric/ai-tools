@@ -57,7 +57,7 @@ lib/
 
 **Data layer:** In-memory, module-level arrays seeded at import time — no Supabase/Postgres. State lives in the running server process: it survives page refreshes (same process) and resets on server restart/redeploy. Chosen over Supabase because it needs zero external setup (demoable with only `GOOGLE_API_KEY`), keeps the entire "database" readable as small seed files, and the assessment's demo/interview bar doesn't require durability across restarts. Production migration path: heartbeats become an append-only event stream in Postgres; weekly run counts become a rollup view; the score functions are unchanged.
 
-**AI SDK:** Vercel AI SDK (`ai` package) with the Google provider (`@ai-sdk/google`), using `generateObject` against a Zod schema per tool to force structured output (functionally equivalent to forced tool-use / `tool_choice` / strict JSON output). Model: `gemini-2.5-flash` by default, overridable via `GOOGLE_MODEL`.
+**AI SDK:** Vercel AI SDK (`ai` package) with the Google provider (`@ai-sdk/google`), using `generateObject` against a Zod schema per tool to force structured output (functionally equivalent to forced tool-use / `tool_choice` / strict JSON output). Model: `gemini-3.5-flash-lite` by default (cheapest tier; `gemini-3.6-flash` for better judgment quality), overridable via `GOOGLE_MODEL`. The provider is created with `createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })` — the SDK's default env-var name (`GOOGLE_GENERATIVE_AI_API_KEY`) is not what we expose.
 
 **Styling:** Tailwind CSS, with the dark-navy + amber palette and font stack (Space Grotesk / Inter / IBM Plex Mono) defined once as CSS variables / Tailwind theme tokens, reused across all four tools' UI so they read as one product.
 

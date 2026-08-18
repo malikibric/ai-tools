@@ -1,5 +1,5 @@
 import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { ZodSchema } from "zod";
 
 export class MissingApiKeyError extends Error {
@@ -16,7 +16,8 @@ export class AICallError extends Error {
   }
 }
 
-const MODEL_ID = process.env.GOOGLE_MODEL ?? "gemini-2.5-flash";
+const MODEL_ID = process.env.GOOGLE_MODEL ?? "gemini-3.5-flash-lite";
+const googleProvider = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY });
 
 export async function callStructured<T>(schema: ZodSchema<T>, prompt: string): Promise<T> {
   if (!process.env.GOOGLE_API_KEY) {
@@ -25,7 +26,7 @@ export async function callStructured<T>(schema: ZodSchema<T>, prompt: string): P
 
   try {
     const { object } = await generateObject({
-      model: google(MODEL_ID),
+      model: googleProvider(MODEL_ID),
       schema,
       prompt,
     });

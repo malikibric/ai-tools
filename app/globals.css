@@ -3,15 +3,77 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #0b1120;
-  --color-surface: #111a2e;
-  --color-border: #1f2b45;
-  --color-text: #e8ecf5;
-  --color-text-muted: #93a0bf;
-  --color-amber: #f5a524;
-  --color-amber-soft: #f5a52426;
+  color-scheme: light;
+  --color-bg: #eef1f6; /* cool paper */
+  --color-surface: #ffffff; /* raised card */
+  --color-surface-2: #e7ebf2; /* inputs / subtle raised */
+  --color-border: #d8deea; /* cool border */
+  --color-text: #181c27; /* ink */
+  --color-text-muted: #5a626f; /* cool gray */
+  --color-amber: #4f46e5; /* indigo accent */
+  --color-amber-soft: rgba(79, 70, 229, 0.1);
   /* RGB channel triplets so Tailwind can apply opacity modifiers (e.g. bg-healthy/15). */
-  --color-healthy: 52 211 153; /* #34d399 */
-  --color-at-risk: 245 165 36; /* #f5a524 */
-  --color-broken: 248 113 113; /* #f87171 */
+  --color-healthy: 21 147 107; /* #15936b */
+  --color-at-risk: 176 134 11; /* #b0860b */
+  --color-broken: 197 52 41; /* #c53429 */
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  /* Editorial warmth: faint amber glow top-right, a whisper of green bottom-left. No flat navy. */
+  background:
+    radial-gradient(1100px 620px at 86% -16%, rgba(79, 70, 229, 0.08), transparent 60%),
+    radial-gradient(920px 620px at -6% 106%, rgba(99, 102, 241, 0.05), transparent 55%),
+    var(--color-bg);
+}
+
+/* Fine grain overlay to break digital flatness (pointer-events-free, barely visible). */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: rgba(79, 70, 229, 0.2);
+  color: var(--color-text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Staggered entry used on the landing page. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease both;
 }

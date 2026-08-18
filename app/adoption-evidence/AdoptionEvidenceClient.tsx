@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
+import { Btn } from "@/lib/ui/Btn";
 import { AdoptionPill } from "./AdoptionPill";
 import {
   computeAdoptionMetrics,
@@ -131,21 +132,21 @@ export function AdoptionEvidenceClient({
       <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <p className="font-mono text-xs uppercase tracking-wide text-text-muted">Workflows tracked</p>
-          <p className="mt-1 font-display text-2xl font-semibold text-text">{summary.workflowCount}</p>
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-text">{summary.workflowCount}</p>
         </Card>
         <Card>
           <p className="font-mono text-xs uppercase tracking-wide text-text-muted">Strong adoption</p>
-          <p className="mt-1 font-display text-2xl font-semibold text-healthy">
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-healthy">
             {summary.strongCount}/{summary.workflowCount}
           </p>
         </Card>
         <Card>
           <p className="font-mono text-xs uppercase tracking-wide text-text-muted">Avg behavior-change score</p>
-          <p className="mt-1 font-display text-2xl font-semibold text-text">{summary.avgScore}/100</p>
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-text">{summary.avgScore}/100</p>
         </Card>
         <Card>
           <p className="font-mono text-xs uppercase tracking-wide text-text-muted">Time saved (claimed vs measured)</p>
-          <p className="mt-1 font-display text-2xl font-semibold text-text">
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-text">
             {hoursLabel(summary.measuredMinutesPerWeek)}
             <span className="text-base text-text-muted"> / {hoursLabel(summary.claimedMinutesPerWeek)}</span>
           </p>
@@ -163,7 +164,10 @@ export function AdoptionEvidenceClient({
                   .map((workflow) => {
                     const metrics = computeAdoptionMetrics(workflow);
                     return (
-                      <Card key={workflow.id} className={selectedId === workflow.id ? "border-amber" : ""}>
+                      <Card
+                        key={workflow.id}
+                        className={`flex h-full flex-col ${selectedId === workflow.id ? "border-amber" : ""}`}
+                      >
                         <button
                           type="button"
                           onClick={() => setSelectedId(workflow.id)}
@@ -173,33 +177,32 @@ export function AdoptionEvidenceClient({
                             <h3 className="font-display text-sm font-semibold text-text">{workflow.name}</h3>
                             <AdoptionPill level={metrics.level} />
                           </div>
-                          <p className="mt-1 text-xs text-text-muted">
+                          <p className="mt-1 text-xs tabular-nums text-text-muted">
                             Owner: {workflow.owner} · Score {metrics.score}/100
                           </p>
                           <ScoreBar score={metrics.score} level={metrics.level} />
-                          <p className="mt-1 text-xs text-text-muted">
+                          <p className="mt-1 text-xs tabular-nums text-text-muted">
                             Claimed {workflow.claimedRunsPerWeek} runs/wk · actual {metrics.recentAvgRuns} · last
                             run {daysAgoLabel(workflow.lastRunAt)}
                           </p>
                           <Sparkline weeklyRuns={workflow.weeklyRuns} />
                         </button>
-                        <div className="mt-3 flex gap-2">
-                          <button
+                        <div className="mt-auto flex gap-2 pt-3">
+                          <Btn
                             type="button"
                             onClick={() => runAnalysis(workflow.id)}
                             disabled={loadingId === workflow.id}
-                            className="rounded border border-amber px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft disabled:opacity-50"
                           >
                             {loadingId === workflow.id ? "Analyzing..." : "Run Adoption Analysis"}
-                          </button>
-                          <button
+                          </Btn>
+                          <Btn
                             type="button"
+                            variant="ghost"
                             onClick={() => simulateRun(workflow.id)}
                             disabled={heartbeatId === workflow.id}
-                            className="rounded border border-border px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-text-muted hover:text-text disabled:opacity-50"
                           >
                             {heartbeatId === workflow.id ? "Pinging..." : "Simulate run"}
-                          </button>
+                          </Btn>
                         </div>
                         {errorByWorkflow[workflow.id] && (
                           <p className="mt-2 text-xs text-broken">{errorByWorkflow[workflow.id]}</p>
@@ -219,7 +222,7 @@ export function AdoptionEvidenceClient({
               <h3 className="font-display text-base font-semibold text-text">{selected.name}</h3>
               <p className="mt-2 text-sm text-text-muted">{selected.description}</p>
               <p className="mt-3 font-mono text-xs uppercase tracking-wide text-text-muted">Score breakdown</p>
-              <ul className="mt-1 space-y-1 text-sm text-text-muted">
+              <ul className="mt-1 space-y-1 text-sm tabular-nums text-text-muted">
                 <li>Adherence (0-50): {selectedMetrics.adherencePoints}</li>
                 <li>Trend (0-30): {selectedMetrics.trendPoints}</li>
                 <li>Recency (0-20): {selectedMetrics.recencyPoints}</li>

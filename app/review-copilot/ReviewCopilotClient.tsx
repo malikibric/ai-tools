@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
+import { Btn } from "@/lib/ui/Btn";
 import { Badge } from "./Badge";
 import type { Submission, SubmissionStatus } from "@/lib/tools/review-copilot/store";
 import type { ReviewBrief } from "@/lib/tools/review-copilot/schema";
@@ -143,13 +144,9 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
               onChange={(e) => setForm({ ...form, dataTouched: e.target.value })}
               className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
             />
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded border border-amber px-4 py-2 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft disabled:opacity-50"
-            >
+            <Btn type="submit" disabled={submitting} className="px-4 py-2">
               {submitting ? "Generating brief..." : "Submit for review"}
-            </button>
+            </Btn>
             {error && <p className="text-xs text-broken">{error}</p>}
           </form>
         </Card>
@@ -186,14 +183,14 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
             <p className="mt-2 text-sm text-text-muted">
               No review brief yet. Generate one to see a plain-language explanation, questions to ask, and risk flags.
             </p>
-            <button
+            <Btn
               type="button"
               onClick={() => generateBrief(selected.id)}
               disabled={loadingId === selected.id}
-              className="mt-4 rounded border border-amber px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft disabled:opacity-50"
+              className="mt-4"
             >
               {loadingId === selected.id ? "Generating..." : "Generate Review Brief"}
-            </button>
+            </Btn>
             {errorBySubmission[selected.id] && (
               <p className="mt-2 text-xs text-broken">{errorBySubmission[selected.id]}</p>
             )}
@@ -230,27 +227,15 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
             <p className="text-sm text-text-muted">{selected.brief.recommendationReasoning}</p>
 
             <div className="flex gap-2 border-t border-border pt-4">
-              <button
-                type="button"
-                onClick={() => updateStatus("approved")}
-                className="rounded border border-healthy px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-healthy hover:bg-healthy/15"
-              >
+              <Btn type="button" variant="healthy" onClick={() => updateStatus("approved")}>
                 Approve
-              </button>
-              <button
-                type="button"
-                onClick={() => updateStatus("approved_with_changes")}
-                className="rounded border border-at-risk px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-at-risk hover:bg-at-risk/15"
-              >
+              </Btn>
+              <Btn type="button" variant="warning" onClick={() => updateStatus("approved_with_changes")}>
                 Approve with changes
-              </button>
-              <button
-                type="button"
-                onClick={() => updateStatus("rejected")}
-                className="rounded border border-broken px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-broken hover:bg-broken/15"
-              >
+              </Btn>
+              <Btn type="button" variant="danger" onClick={() => updateStatus("rejected")}>
                 Reject
-              </button>
+              </Btn>
             </div>
           </div>
         )}

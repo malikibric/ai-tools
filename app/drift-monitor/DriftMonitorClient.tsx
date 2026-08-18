@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/lib/ui/Card";
+import { Btn } from "@/lib/ui/Btn";
 import { RiskPill } from "./RiskPill";
 import type { Workflow } from "@/lib/tools/drift-monitor/store";
 
@@ -63,14 +64,14 @@ export function DriftMonitorClient({ initialWorkflows }: { initialWorkflows: Wor
                       </div>
                       <p className="mt-1 text-xs text-text-muted">Owner: {workflow.owner}</p>
                     </button>
-                    <button
+                    <Btn
                       type="button"
                       onClick={() => runHealthCheck(workflow.id)}
                       disabled={loadingId === workflow.id}
-                      className="mt-3 rounded border border-amber px-3 py-1.5 font-mono text-xs uppercase tracking-wide text-amber hover:bg-amber-soft disabled:opacity-50"
+                      className="mt-3"
                     >
                       {loadingId === workflow.id ? "Checking..." : "Run Health Check"}
-                    </button>
+                    </Btn>
                     {errorByWorkflow[workflow.id] && (
                       <p className="mt-2 text-xs text-broken">{errorByWorkflow[workflow.id]}</p>
                     )}
