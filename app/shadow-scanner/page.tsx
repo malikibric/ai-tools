@@ -4,6 +4,8 @@ import { PageShell } from "@/lib/ui/PageShell";
 import { SurveyForm } from "./SurveyForm";
 import { getSurveyResponses } from "@/lib/tools/shadow-scanner/store";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Shadow AI Discovery Scanner — TAI Suite",
   description: "Surveys informal AI usage and aggregates it into a rollout-planning artifact.",
