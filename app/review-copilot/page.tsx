@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: "Turns a raw employee workflow submission into a structured brief a manager can act on.",
 };
 
-export default function ReviewCopilotPage() {
-  const submissions = getSubmissions();
+export default async function ReviewCopilotPage() {
+  const submissions = await getSubmissions();
 
   return (
     <PageShell

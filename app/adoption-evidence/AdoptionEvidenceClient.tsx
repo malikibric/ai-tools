@@ -63,6 +63,15 @@ function Sparkline({ weeklyRuns }: { weeklyRuns: number[] }) {
   );
 }
 
+const EMPTY_FORM = {
+  name: "",
+  owner: "",
+  description: "",
+  claimedRunsPerWeek: "",
+  claimedMinutesPerRun: "",
+  weeklyRuns: "",
+};
+
 export function AdoptionEvidenceClient({
   initialWorkflows,
   initialSummary,
@@ -77,8 +86,23 @@ export function AdoptionEvidenceClient({
   const [heartbeatId, setHeartbeatId] = useState<string | null>(null);
   const [errorByWorkflow, setErrorByWorkflow] = useState<Record<string, string>>({});
 
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<AdoptionWorkflow | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   const selected = workflows.find((w) => w.id === selectedId) ?? null;
   const selectedMetrics: AdoptionMetrics | null = selected ? computeAdoptionMetrics(selected) : null;
+
+  async function refresh() {
+    const res = await fetch("/api/adoption-evidence");
+    if (res.ok) {
+      const data = await res.json();
+      setWorkflows(data.workflows);
+      setSummary(data.summary);
+    }
+  }
 
   function applyWorkflow(updated: AdoptionWorkflow) {
     const next = workflows.map((w) => (w.id === updated.id ? updated : w));
@@ -91,7 +115,7 @@ export function AdoptionEvidenceClient({
     setLoadingId(id);
     setErrorByWorkflow((prev) => ({ ...prev, [id]: "" }));
     try {
-      const response = await fetch("/api/adoption-evidence", {
+      const response = await fetch("/api/adoption-evidence/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workflowId: id }),
@@ -127,9 +151,141 @@ export function AdoptionEvidenceClient({
     }
   }
 
+  function openNew() {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setFormOpen(true);
+  }
+
+  function openEdit(workflow: AdoptionWorkflow) {
+    setEditing(workflow);
+    setForm({
+      name: workflow.name,
+      owner: workflow.owner,
+      description: workflow.description,
+      claimedRunsPerWeek: String(workflow.claimedRunsPerWeek),
+      claimedMinutesPerRun: String(workflow.claimedMinutesPerRun),
+      weeklyRuns: workflow.weeklyRuns.join(","),
+    });
+    setFormOpen(true);
+  }
+
+  async function saveForm(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setFormError(null);
+    const payload = {
+      name: form.name,
+      owner: form.owner,
+      description: form.description,
+      claimedRunsPerWeek: Number(form.claimedRunsPerWeek),
+      claimedMinutesPerRun: Number(form.claimedMinutesPerRun),
+      weeklyRuns: form.weeklyRuns
+        .split(",")
+        .map((s) => Number(s.trim()))
+        .filter((n) => !Number.isNaN(n)),
+    };
+    const url = editing ? `/api/adoption-evidence/${editing.id}` : "/api/adoption-evidence";
+    const response = await fetch(url, {
+      method: editing ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      setFormError((await response.json()).error?.message ?? "Save failed.");
+      setSaving(false);
+      return;
+    }
+    setFormOpen(false);
+    setSaving(false);
+    await refresh();
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Delete this workflow?")) return;
+    const response = await fetch(`/api/adoption-evidence/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      await refresh();
+      if (selectedId === id) setSelectedId(null);
+    }
+  }
+
   return (
     <div>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="flex justify-end">
+        <Btn type="button" onClick={openNew}>
+          + New workflow
+        </Btn>
+      </div>
+
+      {formOpen && (
+        <Card className="mt-4">
+          <h2 className="font-display text-base font-semibold text-text">
+            {editing ? "Edit workflow" : "New workflow"}
+          </h2>
+          <form onSubmit={saveForm} className="mt-4 space-y-3">
+            <input
+              required
+              placeholder="Name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
+            />
+            <input
+              required
+              placeholder="Owner"
+              value={form.owner}
+              onChange={(e) => setForm({ ...form, owner: e.target.value })}
+              className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
+            />
+            <textarea
+              required
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
+              rows={3}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                required
+                type="number"
+                min={1}
+                placeholder="Claimed runs / week"
+                value={form.claimedRunsPerWeek}
+                onChange={(e) => setForm({ ...form, claimedRunsPerWeek: e.target.value })}
+                className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
+              />
+              <input
+                required
+                type="number"
+                min={1}
+                placeholder="Minutes / run"
+                value={form.claimedMinutesPerRun}
+                onChange={(e) => setForm({ ...form, claimedMinutesPerRun: e.target.value })}
+                className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
+              />
+            </div>
+            <input
+              placeholder="Weekly runs (comma separated, e.g. 2,2,3,3)"
+              value={form.weeklyRuns}
+              onChange={(e) => setForm({ ...form, weeklyRuns: e.target.value })}
+              className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
+            />
+            <div className="flex gap-2">
+              <Btn type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save"}
+              </Btn>
+              <Btn type="button" variant="ghost" onClick={() => setFormOpen(false)}>
+                Cancel
+              </Btn>
+            </div>
+            {formError && <p className="text-xs text-broken">{formError}</p>}
+          </form>
+        </Card>
+      )}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-4">
         <Card>
           <p className="font-mono text-xs uppercase tracking-wide text-text-muted">Workflows tracked</p>
           <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-text">{summary.workflowCount}</p>
@@ -168,11 +324,7 @@ export function AdoptionEvidenceClient({
                         key={workflow.id}
                         className={`flex h-full flex-col ${selectedId === workflow.id ? "border-amber" : ""}`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(workflow.id)}
-                          className="w-full text-left"
-                        >
+                        <button type="button" onClick={() => setSelectedId(workflow.id)} className="w-full text-left">
                           <div className="flex items-center justify-between gap-2">
                             <h3 className="font-display text-sm font-semibold text-text">{workflow.name}</h3>
                             <AdoptionPill level={metrics.level} />
@@ -182,17 +334,13 @@ export function AdoptionEvidenceClient({
                           </p>
                           <ScoreBar score={metrics.score} level={metrics.level} />
                           <p className="mt-1 text-xs tabular-nums text-text-muted">
-                            Claimed {workflow.claimedRunsPerWeek} runs/wk · actual {metrics.recentAvgRuns} · last
-                            run {daysAgoLabel(workflow.lastRunAt)}
+                            Claimed {workflow.claimedRunsPerWeek} runs/wk · actual {metrics.recentAvgRuns} · last run{" "}
+                            {daysAgoLabel(workflow.lastRunAt)}
                           </p>
                           <Sparkline weeklyRuns={workflow.weeklyRuns} />
                         </button>
-                        <div className="mt-auto flex gap-2 pt-3">
-                          <Btn
-                            type="button"
-                            onClick={() => runAnalysis(workflow.id)}
-                            disabled={loadingId === workflow.id}
-                          >
+                        <div className="mt-auto flex flex-wrap gap-2 pt-3">
+                          <Btn type="button" onClick={() => runAnalysis(workflow.id)} disabled={loadingId === workflow.id}>
                             {loadingId === workflow.id ? "Analyzing..." : "Run Adoption Analysis"}
                           </Btn>
                           <Btn
@@ -202,6 +350,12 @@ export function AdoptionEvidenceClient({
                             disabled={heartbeatId === workflow.id}
                           >
                             {heartbeatId === workflow.id ? "Pinging..." : "Simulate run"}
+                          </Btn>
+                          <Btn type="button" variant="ghost" onClick={() => openEdit(workflow)}>
+                            Edit
+                          </Btn>
+                          <Btn type="button" variant="ghost" onClick={() => remove(workflow.id)}>
+                            Delete
                           </Btn>
                         </div>
                         {errorByWorkflow[workflow.id] && (
@@ -248,8 +402,8 @@ export function AdoptionEvidenceClient({
       </div>
 
       <p className="mt-6 max-w-3xl text-xs text-text-muted">
-        {summary.stalledCount} workflow{summary.stalledCount === 1 ? "" : "s"} approved but no longer run at all —
-        the kind of adoption-theater signal an executive would want to know about before renewal.
+        {summary.stalledCount} workflow{summary.stalledCount === 1 ? "" : "s"} approved but no longer run at all — the
+        kind of adoption-theater signal an executive would want to know about before renewal.
       </p>
     </div>
   );

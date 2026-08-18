@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   description: "Measures whether approved workflows actually changed the work, via telemetry heartbeats.",
 };
 
-export default function AdoptionEvidencePage() {
-  const workflows = getAdoptionWorkflows();
+export default async function AdoptionEvidencePage() {
+  const workflows = await getAdoptionWorkflows();
   const summary = summarizeAdoption(workflows);
 
   return (

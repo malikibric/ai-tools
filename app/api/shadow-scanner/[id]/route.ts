@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { callStructured, classifyError } from "@/lib/ai";
-import { badRequest, readJsonBody } from "@/lib/http";
+import { badRequest, notFound, readJsonBody } from "@/lib/http";
 import { SurveyAnalysisSchema } from "@/lib/tools/shadow-scanner/schema";
-import { createSurveyResponse, getSurveyResponses, setSurveyResponseAnalysis } from "@/lib/tools/shadow-scanner/store";
+import {
+  deleteSurveyResponse,
+  getSurveyResponseById,
+  setSurveyResponseAnalysis,
+  updateSurveyResponse,
+  type SurveyInput,
+} from "@/lib/tools/shadow-scanner/store";
 
-const AnswersSchema = z.object({
+const UpdateSchema = z.object({
   toolsUsed: z.string().min(1),
   whatFor: z.string().min(1),
   howOften: z.string().min(1),
@@ -25,21 +31,27 @@ Extract:
 4. A one-line summary of the response.`;
 }
 
-export async function GET() {
-  return NextResponse.json({ responses: await getSurveyResponses() });
-}
-
-export async function POST(request: Request) {
-  const body = await readJsonBody(request, AnswersSchema);
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const body = await readJsonBody(request, UpdateSchema);
   if (!body) return badRequest("All three survey answers are required.");
 
-  const response = await createSurveyResponse(body);
+  const existing = await getSurveyResponseById(id);
+  if (!existing) return notFound("Response not found.");
+
+  const updated = await updateSurveyResponse(id, body as SurveyInput);
   try {
     const analysis = await callStructured(SurveyAnalysisSchema, buildPrompt(body));
-    const updated = await setSurveyResponseAnalysis(response.id, analysis);
-    return NextResponse.json({ response: updated });
+    const withAnalysis = await setSurveyResponseAnalysis(id, analysis);
+    return NextResponse.json({ response: withAnalysis });
   } catch (error) {
     const { kind, message } = classifyError(error);
-    return NextResponse.json({ response, error: { kind, message } }, { status: 502 });
+    return NextResponse.json({ response: updated, error: { kind, message } }, { status: 502 });
   }
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  await deleteSurveyResponse(id);
+  return NextResponse.json({ ok: true });
 }

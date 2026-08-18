@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageShell } from "@/lib/ui/PageShell";
 import { SurveyForm } from "./SurveyForm";
+import { getSurveyResponses } from "@/lib/tools/shadow-scanner/store";
 
 export const metadata: Metadata = {
   title: "Shadow AI Discovery Scanner — TAI Suite",
   description: "Surveys informal AI usage and aggregates it into a rollout-planning artifact.",
 };
 
-export default function ShadowScannerPage() {
+export default async function ShadowScannerPage() {
+  const responses = await getSurveyResponses();
   return (
     <PageShell
       title="Shadow AI Discovery Scanner"
@@ -22,7 +24,7 @@ export default function ShadowScannerPage() {
           View aggregate results &rarr;
         </Link>
       </div>
-      <SurveyForm />
+      <SurveyForm initialResponses={responses} />
     </PageShell>
   );
 }

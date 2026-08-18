@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   description: "Flags approved workflows whose dependencies or behavior have likely drifted since approval.",
 };
 
-export default function DriftMonitorPage() {
-  const workflows = getWorkflows();
+export default async function DriftMonitorPage() {
+  const workflows = await getWorkflows();
 
   return (
     <PageShell

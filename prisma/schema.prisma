@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdoptionWorkflow {
+  id                   String    @id
+  name                 String
+  owner                String
+  description          String
+  claimedRunsPerWeek   Int
+  claimedMinutesPerRun Int
+  weeklyRuns           Int[]
+  lastRunAt            DateTime?
+  instrumentedAt       DateTime  @default(now())
+  assessment           Json?
+}
+
+model DriftWorkflow {
+  id           String   @id
+  name         String
+  owner        String
+  description  String
+  dependencies String[]
+  dateApproved String
+  lastVerified String
+  assessment   Json?
+}
+
+model Submission {
+  id                        String   @id
+  employeeName              String
+  whatItDoes                String
+  toolOrPromptUsed          String
+  claimedTimeSavedPerWeek   String
+  dataTouched               String
+  status                    String   @default("pending")
+  brief                     Json?
+}
+
+model SurveyResponse {
+  id        String @id
+  toolsUsed String
+  whatFor   String
+  howOften  String
+  analysis  Json?
+}

@@ -26,8 +26,8 @@ function hasAnalysis(response: SurveyResponse): response is AnalyzedResponse {
   return response.analysis !== null;
 }
 
-export default function AggregatePage() {
-  const responses = getSurveyResponses().filter(hasAnalysis);
+export default async function AggregatePage() {
+  const responses = (await getSurveyResponses()).filter(hasAnalysis);
 
   const tools = countBy(responses.flatMap((r) => r.analysis.toolsMentioned));
   const useCases = countBy(responses.map((r) => r.analysis.useCaseCategory));

@@ -32,6 +32,7 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [selectedId, setSelectedId] = useState<string | null>(initialSubmissions[0]?.id ?? null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -39,21 +40,26 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
 
   const selected = submissions.find((s) => s.id === selectedId) ?? null;
 
+  async function refresh() {
+    const res = await fetch("/api/review-copilot");
+    if (res.ok) {
+      const data = await res.json();
+      setSubmissions(data.submissions);
+    }
+  }
+
   async function generateBrief(id: string) {
     setLoadingId(id);
     setErrorBySubmission((prev) => ({ ...prev, [id]: "" }));
     try {
-      const response = await fetch("/api/review-copilot", {
+      const response = await fetch("/api/review-copilot/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
       const data = await response.json();
       if (!response.ok) {
-        setErrorBySubmission((prev) => ({
-          ...prev,
-          [id]: data.error?.message ?? "Failed to generate review brief.",
-        }));
+        setErrorBySubmission((prev) => ({ ...prev, [id]: data.error?.message ?? "Failed to generate review brief." }));
         return;
       }
       setSubmissions((prev) => prev.map((s) => (s.id === id ? data.submission : s)));
@@ -66,35 +72,51 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
     event.preventDefault();
     setSubmitting(true);
     setError(null);
-    try {
-      const response = await fetch("/api/review-copilot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error?.message ?? "Failed to generate review brief.");
-        if (data.submission) {
-          setSubmissions((prev) => [...prev, data.submission]);
-          setSelectedId(data.submission.id);
-        }
-        return;
-      }
-      setSubmissions((prev) => [...prev, data.submission]);
-      setSelectedId(data.submission.id);
-      setForm(EMPTY_FORM);
-    } finally {
+    const url = editingId ? `/api/review-copilot/${editingId}` : "/api/review-copilot";
+    const response = await fetch(url, {
+      method: editingId ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setError(data.error?.message ?? "Failed to save submission.");
       setSubmitting(false);
+      return;
+    }
+    await refresh();
+    setSelectedId(data.submission.id);
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setSubmitting(false);
+  }
+
+  function openEdit(submission: Submission) {
+    setEditingId(submission.id);
+    setForm({
+      employeeName: submission.employeeName,
+      whatItDoes: submission.whatItDoes,
+      toolOrPromptUsed: submission.toolOrPromptUsed,
+      claimedTimeSavedPerWeek: submission.claimedTimeSavedPerWeek,
+      dataTouched: submission.dataTouched,
+    });
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Delete this submission?")) return;
+    const response = await fetch(`/api/review-copilot/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      await refresh();
+      if (selectedId === id) setSelectedId(null);
     }
   }
 
   async function updateStatus(status: SubmissionStatus) {
     if (!selected) return;
-    const response = await fetch("/api/review-copilot", {
+    const response = await fetch(`/api/review-copilot/${selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selected.id, status }),
+      body: JSON.stringify({ status }),
     });
     const data = await response.json();
     if (response.ok) {
@@ -106,7 +128,9 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
         <Card>
-          <h2 className="font-display text-base font-semibold text-text">Submit a workflow</h2>
+          <h2 className="font-display text-base font-semibold text-text">
+            {editingId ? "Edit submission" : "Submit a workflow"}
+          </h2>
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
             <input
               required
@@ -144,9 +168,23 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
               onChange={(e) => setForm({ ...form, dataTouched: e.target.value })}
               className="w-full rounded border border-border bg-bg px-3 py-2 text-sm text-text"
             />
-            <Btn type="submit" disabled={submitting} className="px-4 py-2">
-              {submitting ? "Generating brief..." : "Submit for review"}
-            </Btn>
+            <div className="flex gap-2">
+              <Btn type="submit" disabled={submitting} className="px-4 py-2">
+                {submitting ? "Saving..." : editingId ? "Save changes" : "Submit for review"}
+              </Btn>
+              {editingId && (
+                <Btn
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(EMPTY_FORM);
+                  }}
+                >
+                  Cancel
+                </Btn>
+              )}
+            </div>
             {error && <p className="text-xs text-broken">{error}</p>}
           </form>
         </Card>
@@ -155,19 +193,35 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
           <h2 className="font-display text-base font-semibold text-text">Submissions</h2>
           <div className="mt-3 space-y-2">
             {submissions.map((submission) => (
-              <button
+              <div
                 key={submission.id}
-                type="button"
-                onClick={() => setSelectedId(submission.id)}
-                className={`block w-full rounded border px-3 py-2 text-left text-sm ${
-                  selectedId === submission.id ? "border-amber text-text" : "border-border text-text-muted"
+                className={`rounded border px-3 py-2 ${
+                  selectedId === submission.id ? "border-amber" : "border-border"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span>{submission.employeeName}</span>
-                  <Badge>{STATUS_LABELS[submission.status]}</Badge>
+                <button type="button" onClick={() => setSelectedId(submission.id)} className="w-full text-left">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-text">{submission.employeeName}</span>
+                    <Badge>{STATUS_LABELS[submission.status]}</Badge>
+                  </div>
+                </button>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(submission)}
+                    className="font-mono text-xs uppercase tracking-wide text-text-muted hover:text-amber"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(submission.id)}
+                    className="font-mono text-xs uppercase tracking-wide text-text-muted hover:text-broken"
+                  >
+                    Delete
+                  </button>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </Card>
@@ -177,9 +231,7 @@ export function ReviewCopilotClient({ initialSubmissions }: { initialSubmissions
         {!selected && <p className="text-sm text-text-muted">Select a submission to see its review brief.</p>}
         {selected && !selected.brief && (
           <div>
-            <h3 className="font-display text-base font-semibold text-text">
-              {selected.employeeName}&apos;s workflow
-            </h3>
+            <h3 className="font-display text-base font-semibold text-text">{selected.employeeName}&apos;s workflow</h3>
             <p className="mt-2 text-sm text-text-muted">
               No review brief yet. Generate one to see a plain-language explanation, questions to ask, and risk flags.
             </p>

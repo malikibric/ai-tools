@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import { prisma } from "@/lib/db";
 import type { DriftAssessment } from "./schema";
 
 export type Workflow = {
@@ -11,56 +13,79 @@ export type Workflow = {
   assessment: DriftAssessment | null;
 };
 
-let workflows: Workflow[] = [
-  {
-    id: "wf-1",
-    name: "Weekly Support Ticket Triage",
-    owner: "Priya Nandakumar",
-    description:
-      "Every Monday, pulls the previous week's support tickets from the internal ticket export, classifies each by urgency and topic, and posts a summary to the #support-ops Slack channel. Still runs exactly as documented; the team references the summary every week.",
-    dependencies: ["Internal ticket CSV export (unchanged format since 2024)", "Slack webhook to #support-ops"],
-    dateApproved: "2025-11-03",
-    lastVerified: "2026-07-20",
-    assessment: null,
-  },
-  {
-    id: "wf-2",
-    name: "Competitor Pricing Digest",
-    owner: "Marcus Webb",
-    description:
-      "Scrapes three competitor pricing pages weekly and drafts a comparison doc. The team mentioned recently that the digest 'looks a little empty lately' but nobody has looked into why.",
-    dependencies: [
-      "Competitor pricing page scraper (one competitor redesigned their pricing page last quarter)",
-      "Google Docs API for the comparison doc",
-    ],
-    dateApproved: "2025-09-15",
-    lastVerified: "2026-02-01",
-    assessment: null,
-  },
-  {
-    id: "wf-3",
-    name: "Legacy Invoice Summarizer",
-    owner: "Dana Ruiz",
-    description:
-      "Summarizes incoming vendor invoices using the AcmeInvoice v1 API and emails the summary to accounts payable. AcmeInvoice v1 was formally deprecated and shut off; the workflow has not been updated since.",
-    dependencies: ["AcmeInvoice API v1 (deprecated, shut down)", "Internal email relay"],
-    dateApproved: "2025-06-10",
-    lastVerified: "2025-06-10",
-    assessment: null,
-  },
-];
-
-export function getWorkflows(): Workflow[] {
-  return workflows;
+function fromRow(r: {
+  id: string;
+  name: string;
+  owner: string;
+  description: string;
+  dependencies: string[];
+  dateApproved: string;
+  lastVerified: string;
+  assessment: unknown;
+}): Workflow {
+  return {
+    id: r.id,
+    name: r.name,
+    owner: r.owner,
+    description: r.description,
+    dependencies: r.dependencies,
+    dateApproved: r.dateApproved,
+    lastVerified: r.lastVerified,
+    assessment: (r.assessment as DriftAssessment) ?? null,
+  };
 }
 
-export function getWorkflowById(id: string): Workflow | undefined {
-  return workflows.find((w) => w.id === id);
+export async function getWorkflows(): Promise<Workflow[]> {
+  return (await prisma.driftWorkflow.findMany({ orderBy: { id: "asc" } })).map(fromRow);
 }
 
-export function updateWorkflowAssessment(id: string, assessment: DriftAssessment): Workflow | undefined {
-  const workflow = getWorkflowById(id);
-  if (!workflow) return undefined;
-  workflow.assessment = assessment;
-  return workflow;
+export async function getWorkflowById(id: string): Promise<Workflow | null> {
+  const r = await prisma.driftWorkflow.findUnique({ where: { id } });
+  return r ? fromRow(r) : null;
+}
+
+export type DriftWorkflowInput = {
+  id?: string;
+  name: string;
+  owner: string;
+  description: string;
+  dependencies?: string[];
+  dateApproved: string;
+  lastVerified: string;
+};
+
+export async function createWorkflow(input: DriftWorkflowInput): Promise<Workflow> {
+  const r = await prisma.driftWorkflow.create({
+    data: {
+      id: input.id ?? `wf-${randomUUID().slice(0, 8)}`,
+      name: input.name,
+      owner: input.owner,
+      description: input.description,
+      dependencies: input.dependencies ?? [],
+      dateApproved: input.dateApproved,
+      lastVerified: input.lastVerified,
+    },
+  });
+  return fromRow(r);
+}
+
+export async function updateWorkflow(id: string, input: Partial<DriftWorkflowInput>): Promise<Workflow | null> {
+  const data: Record<string, unknown> = {};
+  if (input.name !== undefined) data.name = input.name;
+  if (input.owner !== undefined) data.owner = input.owner;
+  if (input.description !== undefined) data.description = input.description;
+  if (input.dependencies !== undefined) data.dependencies = input.dependencies;
+  if (input.dateApproved !== undefined) data.dateApproved = input.dateApproved;
+  if (input.lastVerified !== undefined) data.lastVerified = input.lastVerified;
+  const r = await prisma.driftWorkflow.update({ where: { id }, data });
+  return fromRow(r);
+}
+
+export async function deleteWorkflow(id: string): Promise<void> {
+  await prisma.driftWorkflow.delete({ where: { id } });
+}
+
+export async function updateWorkflowAssessment(id: string, assessment: DriftAssessment): Promise<Workflow | null> {
+  const r = await prisma.driftWorkflow.update({ where: { id }, data: { assessment } });
+  return fromRow(r);
 }
